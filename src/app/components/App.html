@@ -388,19 +388,23 @@
 
     .text {
         width: 100%;
-        flex: 0 0 120px;
+        flex: 0 0 auto;
+        max-height: 25%;
+        min-height: 80px;
+        padding: 20px;
 
         display: flex;
         align-items: center;
         justify-content: center;
         flex-wrap: wrap;
 
-        font-size: 40px;
+        font-size: clamp(24px, 4vw, 40px);
+        overflow-y: auto;
     }
 
     .text span {
         white-space: pre; /* blanks */
-        padding: 4px;
+        padding: 0.1em;
     }
 
     span.target {
