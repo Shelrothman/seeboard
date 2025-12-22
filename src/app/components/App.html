@@ -6,6 +6,25 @@
     <title>Seeboard ({version})</title>
 </svelte:head>
 <div class="app">
+    <div class="controls">
+        <label>
+            Keyboard:
+            <select bind:value="selectedKeyboard" on:change="onKeyboardChange()">
+                <option value="keyboardio">Keyboard.io</option>
+                <option value="moonlander">ZSA Moonlander</option>
+            </select>
+        </label>
+        
+        {#if selectedKeyboard === 'moonlander'}
+        <label class="layer-selector">
+            Layer:
+            <button class="{currentLayer === 0 ? 'active' : ''}" on:click="setLayer(0)">0 (Base)</button>
+            <button class="{currentLayer === 1 ? 'active' : ''}" on:click="setLayer(1)">1 (Symbols)</button>
+            <button class="{currentLayer === 2 ? 'active' : ''}" on:click="setLayer(2)">2 (Media)</button>
+        </label>
+        {/if}
+    </div>
+    
     <div class="text">
         <div>
         {#each letters as letter}
@@ -16,10 +35,19 @@
         </div>
     </div>
     <div class="keyboard">
-        <Keyboard
+        {#if selectedKeyboard === 'keyboardio'}
+        <KeyboardioKeyboard
             {targetChar}
             {pressedChars}
         />
+        {:else}
+        <MoonlanderKeyboard
+            {targetChar}
+            {pressedChars}
+            {currentLayer}
+            on:layerChange="handleLayerChange(event)"
+        />
+        {/if}
     </div>
 </div>
 
@@ -30,15 +58,87 @@
 
     const WORDS_AMOUNT_MAX = 3;
 
+    // Developer-friendly code snippets for practice
+    const CODE_SNIPPETS = [
+        "const foo = () => {",
+        "return true;",
+        "};",
+        "let x = 10;",
+        "const arr = [1, 2, 3];",
+        "if (x > 5) {",
+        "console.log('test');",
+        "}",
+        "const obj = {a: 1};",
+        "arr.map(x => x * 2);",
+        "function test() {",
+        "for (let i = 0; i < 10; i++) {",
+        "array.filter(item => item !== null);",
+        "const {name, age} = person;",
+        "return x + y;",
+        "await fetch('/api/data');",
+        "const result = a && b || c;",
+        "value === undefined ? 0 : value",
+        "str.split(',').join(' ');",
+        "path/to/file.js",
+        "@decorator",
+        "x += 5;",
+        "!isValid",
+        "a || b",
+        "x >= 10",
+        "arr[0]",
+        "obj.key",
+        "func(arg1, arg2);",
+        "import {Component} from 'react';",
+        "export default App;",
+        "class MyClass {",
+        "this.value = 123;",
+        "super(props);",
+        "try { } catch (e) { }",
+        "${variable}",
+        "`template string`",
+        "/* comment */",
+        "// inline comment",
+        "value ?? fallback",
+        "obj?.property",
+        "arr?.length",
+        "[...spread]",
+        "{...rest}",
+        "async function*",
+        "<Component />",
+        "key: 'value',",
+        "a ? b : c",
+        "x % 2 === 0",
+        "Math.floor(x)",
+        "parseInt('10', 10);",
+        "str.replace(/\\d+/g, '');",
+    ];
+
     const pickRandomWord = () => {
         const w_index = Math.round((WORDS.length - 1) * Math.random());
         return _.getIndex(WORDS, w_index);
     }
 
+    const pickRandomSnippet = () => {
+        const index = Math.floor(CODE_SNIPPETS.length * Math.random());
+        return CODE_SNIPPETS[index];
+    }
+
     const makeNewText = () => {
-        const wordsAmount = Math.round(WORDS_AMOUNT_MAX * Math.random());
-        const words = _.map(_.range(0, wordsAmount + 1), pickRandomWord);
-        const letters = _.map(words.join(" "), (char, c_index) => ({
+        // 70% code snippets, 30% words for variety
+        const useCodeSnippets = Math.random() > 0.3;
+        
+        let text;
+        if (useCodeSnippets) {
+            const snippetCount = Math.floor(Math.random() * 3) + 1;
+            const snippets = _.map(_.range(0, snippetCount), pickRandomSnippet);
+            text = snippets.join(" ");
+        } else {
+            const wordsAmount = Math.round(WORDS_AMOUNT_MAX * Math.random());
+            const words = _.map(_.range(0, wordsAmount + 1), pickRandomWord);
+            text = words.join(" ");
+        }
+
+        const letters = _.map(text, (char, c_index) => ({
             char,
             isTarget: c_index === 0,
             isDone: false
@@ -54,14 +154,17 @@
 
     export default {
         components: {
-            Keyboard: "./Keyboardio/Keyboard.html",
+            KeyboardioKeyboard: "./Keyboardio/Keyboard.html",
+            MoonlanderKeyboard: "./Moonlander/Keyboard.html",
         },
 
         data () {
             return {
                 version,
                 ...makeNewText(),
-                pressedChars: []
+                pressedChars: [],
+                selectedKeyboard: 'moonlander', // Default to Moonlander
+                currentLayer: 0
             };
         },
 
@@ -73,6 +176,21 @@
                 });
             },
 
+            setLayer(layer) {
+                console.log('Setting layer to:', layer, 'from:', this.get().currentLayer);
+                this.set({ currentLayer: layer });
+                console.log('Layer now:', this.get().currentLayer);
+            },
+            
+            handleLayerChange(event) {
+                this.setLayer(event.layer);
+            },
+
+            onKeyboardChange() {
+                // Reset text when switching keyboards
+                this.resetText();
+            },
+
             onkeydown (event) {
                 const {
                     targetChar,
@@ -82,50 +200,112 @@
                     pressedChars: prevPressedKeys
                 } = this.get();
 
-                if (_.isIn(["PageUp", "PageDown"], event.key)) {
+                // Normalize key names for consistency across keyboards
+                let key = event.key;
+                
+                // Handle different shift key names
+                if (key === 'ShiftLeft' || key === 'ShiftRight') {
+                    key = 'Shift';
+                }
+                
+                // Handle arrow keys
+                if (key.startsWith('Arrow')) {
+                    key = key; // Keep as-is (ArrowLeft, ArrowRight, etc.)
+                }
+                
+                // Debug logging (comment out in production)
+                console.log('Key pressed:', key, 'Target:', targetChar, 'event.key:', event.key, 'event.code:', event.code);
+
+                if (_.isIn(["PageUp", "PageDown"], key)) {
                     this.resetText();
                     return;
                 }
 
-                if ((targetChar === "Enter") && (event.key === targetChar)) {
+                if ((targetChar === "Enter") && (key === targetChar)) {
                     this.resetText();
                     return;
                 }
 
+                // Add the pressed key to the list
                 const pressedChars = _.uniques(
-                    _.appendTo(prevPressedKeys, event.key)
+                    _.appendTo(prevPressedKeys, key)
                 );
                 this.set({pressedChars});
 
+                // Check for direct match
                 if (_.isIn(pressedChars, targetChar)) {
-                    const newIndex = currentIndex + 1;
+                    this.advanceToNextChar(currentIndex, lastIndex, letters);
+                    return;
+                }
 
-                    if (newIndex <= lastIndex) {
-                        const newLetters = _.setPathIn(
-                            _.setPathIn(letters, `${currentIndex}.isDone`, true),
-                            `${newIndex}.isTarget`,
-                            true
-                        );
-
-                        this.set({
-                            letters: newLetters,
-                            currentIndex: newIndex,
-                            targetChar: newLetters[newIndex].char
-                        });
-                    } else {
-                        // press enter to get new text
-                        this.set({
-                            letters: _.setPathIn(letters, "-1.isDone", true),
-                            targetChar: "Enter"
-                        });
+                // Check for shift combinations (e.g., "Shift+1" for "!")
+                const isShiftPressed = _.isIn(pressedChars, "Shift");
+                if (isShiftPressed && targetChar.length === 1) {
+                    // Check if any pressed key + Shift matches the target
+                    const nonShiftKeys = _.filter(pressedChars, key => key !== "Shift");
+                    for (let pressedKey of nonShiftKeys) {
+                        const combination = `Shift+${pressedKey}`;
+                        if (combination === targetChar || this.shiftMapsTo(pressedKey, targetChar)) {
+                            this.advanceToNextChar(currentIndex, lastIndex, letters);
+                            return;
+                        }
                     }
+                }
+            },
+
+            shiftMapsTo(key, targetChar) {
+                // Map of shift combinations for common symbols
+                const shiftMap = {
+                    '1': '!', '2': '@', '3': '#', '4': '$', '5': '%',
+                    '6': '^', '7': '&', '8': '*', '9': '(', '0': ')',
+                    '-': '_', '=': '+', '[': '{', ']': '}', '\\': '|',
+                    ';': ':', '\'': '"', ',': '<', '.': '>', '/': '?',
+                    '`': '~'
+                };
+                
+                // Check lowercase to uppercase
+                if (key.length === 1 && targetChar === key.toUpperCase()) {
+                    return true;
+                }
+                
+                // Check symbol mapping
+                return shiftMap[key] === targetChar;
+            },
+
+            advanceToNextChar(currentIndex, lastIndex, letters) {
+                const newIndex = currentIndex + 1;
+
+                if (newIndex <= lastIndex) {
+                    const newLetters = _.setPathIn(
+                        _.setPathIn(letters, `${currentIndex}.isDone`, true),
+                        `${newIndex}.isTarget`,
+                        true
+                    );
+
+                    this.set({
+                        letters: newLetters,
+                        currentIndex: newIndex,
+                        targetChar: newLetters[newIndex].char
+                    });
+                } else {
+                    // press enter to get new text
+                    this.set({
+                        letters: _.setPathIn(letters, "-1.isDone", true),
+                        targetChar: "Enter"
+                    });
                 }
             },
 
             onkeyup (event) {
                 const {pressedChars: prevPressedKeys} = this.get();
 
-                this.set({pressedChars: _.pullFrom(prevPressedKeys, [event.key])});
+                // Normalize key names for consistency
+                let key = event.key;
+                if (key === 'ShiftLeft' || key === 'ShiftRight') {
+                    key = 'Shift';
+                }
+
+                this.set({pressedChars: _.pullFrom(prevPressedKeys, [key])});
             },
         }
     }
@@ -143,6 +323,67 @@
 
         color: rgb(80, 80, 80);
         font-family: monospace;
+    }
+
+    .controls {
+        width: 100%;
+        flex: 0 0 60px;
+        
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+        
+        padding: 10px;
+        background-color: rgb(250, 250, 250);
+        border-bottom: 1px solid rgb(200, 200, 200);
+    }
+
+    .controls label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .controls select {
+        padding: 6px 12px;
+        border: 1px solid rgb(200, 200, 200);
+        border-radius: 4px;
+        font-size: 14px;
+        background-color: white;
+        cursor: pointer;
+    }
+
+    .controls select:hover {
+        border-color: rgb(100, 100, 100);
+    }
+
+    .layer-selector {
+        display: flex;
+        gap: 5px;
+    }
+
+    .layer-selector button {
+        padding: 6px 12px;
+        border: 1px solid rgb(200, 200, 200);
+        border-radius: 4px;
+        background-color: white;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .layer-selector button:hover {
+        background-color: rgb(240, 240, 240);
+        border-color: rgb(100, 100, 100);
+    }
+
+    .layer-selector button.active {
+        background-color: rgb(80, 80, 80);
+        color: white;
+        border-color: rgb(80, 80, 80);
     }
 
     .text {
@@ -175,7 +416,7 @@
     .keyboard {
         width: 100%;
         flex: 1;
-        max-height: calc(100% - 120px); /* firefox */
+        max-height: calc(100% - 180px); /* account for controls + text */
 
         display: flex;
         align-items: center;
