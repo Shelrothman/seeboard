@@ -405,13 +405,13 @@
 
     .text {
         width: 100%;
-        flex: 0 0 auto;
-        max-height: 25%;
+        flex: 0 1 auto;
+        max-height: 30vh;
         min-height: 80px;
         padding: 20px;
 
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         flex-wrap: wrap;
 
@@ -436,8 +436,9 @@
 
     .keyboard {
         width: 100%;
-        flex: 1;
-        max-height: calc(100% - 180px); /* account for controls + text */
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
 
         display: flex;
         align-items: center;
