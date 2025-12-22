@@ -124,19 +124,36 @@
     }
 
     const makeNewText = () => {
-        // 70% code snippets, 30% words for variety
-        const useCodeSnippets = Math.random() > 0.3;
+        // Mix code snippets with dictionary words sprinkled throughout
+        const snippetCount = Math.floor(Math.random() * 3) + 2;
+        const parts = [];
         
-        let text;
-        if (useCodeSnippets) {
-            const snippetCount = Math.floor(Math.random() * 3) + 1;
-            const snippets = _.map(_.range(0, snippetCount), pickRandomSnippet);
-            text = snippets.join(" ");
-        } else {
-            const wordsAmount = Math.round(WORDS_AMOUNT_MAX * Math.random());
-            const words = _.map(_.range(0, wordsAmount + 1), pickRandomWord);
-            text = words.join(" ");
+        for (let i = 0; i < snippetCount; i++) {
+            // 50% chance of code snippet, 50% chance of words
+            if (Math.random() > 0.5) {
+                // Get a code snippet and replace some parts with dictionary words
+                let snippet = pickRandomSnippet();
+                
+                // Replace variable names, strings, or values with dictionary words
+                snippet = snippet
+                    .replace(/key/g, pickRandomWord())
+                    .replace(/value/g, pickRandomWord())
+                    .replace(/obj/g, pickRandomWord())
+                    .replace(/arr/g, pickRandomWord())
+                    .replace(/str/g, pickRandomWord())
+                    .replace(/x/g, pickRandomWord().slice(0, 3))
+                    .replace(/'[^']*'/g, () => `'${pickRandomWord()}'`);
+                
+                parts.push(snippet);
+            } else {
+                // Add 2-4 dictionary words
+                const wordCount = Math.floor(Math.random() * 3) + 2;
+                const words = _.map(_.range(0, wordCount), pickRandomWord);
+                parts.push(words.join(" "));
+            }
         }
+        
+        const text = parts.join(" ");
 
         const letters = _.map(text, (char, c_index) => ({
             char,
@@ -403,7 +420,7 @@
     }
 
     .text span {
-        white-space: pre; /* blanks */
+        white-space: pre-wrap; /* blanks with wrapping */
         padding: 0.1em;
     }
 
