@@ -41,7 +41,10 @@ const bundleOpts = {
         }),
 
         isProductionBuild && buble({
-            objectAssign: "Object.assign"
+            objectAssign: "Object.assign",
+            transforms: {
+                forOf: false
+            }
         }),
         isProductionBuild && terser()
     ],
