@@ -8,13 +8,21 @@
 <div class="app">
     <div class="controls">
         <label>
+            Mode:
+            <select bind:value="contentMode" on:change="onModeChange()">
+                <option value="code">Code</option>
+                <option value="text">Text</option>
+            </select>
+        </label>
+
+        <label>
             Keyboard:
             <select bind:value="selectedKeyboard" on:change="onKeyboardChange()">
                 <option value="keyboardio">Keyboard.io</option>
                 <option value="moonlander">ZSA Moonlander</option>
             </select>
         </label>
-        
+
         {#if selectedKeyboard === 'moonlander'}
         <label class="layer-selector">
             Layer:
@@ -113,6 +121,82 @@
         "str.replace(/\\d+/g, '');",
     ];
 
+    // "text" mode: short, complete sentences in natural language. The point is
+    // to practice flowing prose with rich vocabulary and varied punctuation —
+    // not to drill prompt-shaped wording, which would just feel like more work
+    // for people who write prompts all day.
+    const SENTENCES = [
+        "The quiet harbor glittered as the last ferry slipped beyond the breakwater.",
+        "She argued that curiosity, not certainty, is what keeps a mind genuinely alive.",
+        "Rain drummed against the skylight while the kettle whispered toward a boil.",
+        "His argument was elegant, yet it quietly ignored every inconvenient detail.",
+        "We wandered through the old market, bargaining over saffron and bruised plums.",
+        "A stubborn fog clung to the valley long after the sun had cleared the ridge.",
+        "Nobody expected the understudy to outshine the celebrated lead so completely.",
+        "The river carved its patient signature into the limestone over countless years.",
+        "He collects forgotten words the way others hoard stamps or chipped teacups.",
+        "Their laughter echoed down the corridor, bright and utterly unselfconscious.",
+        "Beneath the floorboards we found letters, brittle and fragrant with old ink.",
+        "The negotiation faltered, then revived, then collapsed under its own ambition.",
+        "Migrating cranes stitched a ragged seam across the bruised autumn sky.",
+        "She measured the flour by instinct, distrusting the precision of any scale.",
+        "An awkward silence settled, thick enough to slice and serve on porcelain.",
+        "The lecture meandered, but its final paragraph landed like a closing door.",
+        "Frost feathered the windowpane in patterns no glassblower could imitate.",
+        "He apologized twice, sincerely the first time and theatrically the second.",
+        "The orchestra tuned, a glorious chaos resolving slowly into one clear note.",
+        "Wild thyme spilled over the terrace, perfuming every reckless afternoon.",
+        "Her handwriting tilted forward, as if the words were impatient to arrive.",
+        "The verdict surprised no one, yet the courtroom exhaled all the same.",
+        "We debated philosophy until the candles guttered and the wine ran dry.",
+        "A single gull shadowed the trawler, patient and faintly contemptuous.",
+        "The bridge swayed gently, reminding us how thin our confidence really was.",
+        "Dawn arrived reluctantly, smearing grey light across the sleeping rooftops.",
+        "He whittled the same stubborn branch every evening, never quite satisfied.",
+        "The map was beautiful and entirely wrong, which somehow made it more charming.",
+        "Snow muffled the city until even the sirens sounded almost apologetic.",
+        "She remembered the recipe perfectly but had forgotten why it mattered so much.",
+        "The auctioneer rattled off numbers like a magician daring us to keep up.",
+        "Old photographs curled at the edges, surrendering slowly to the damp air.",
+        "Their argument cooled into a truce neither of them was willing to name.",
+        "A moth circled the lamp with the doomed devotion of a tiny zealot.",
+        "The professor paused, savoring the question more than any answer he could give.",
+        "Wind chimes bickered on the porch as the storm rehearsed its entrance.",
+        "He drove the long way home, unwilling to let the song finish too soon.",
+        "The garden had gone gloriously feral in the three weeks we were away.",
+        "Her suitcase held more books than clothes, which told you everything.",
+        "The clock in the hall ran four minutes fast, a lie the whole family trusted.",
+        "Lightning revealed the orchard for an instant, then returned it to the dark.",
+        "He spoke softly, but the room leaned in as though he were shouting secrets.",
+        "The cat regarded our renovations with the disdain of a displaced monarch.",
+        "We traced constellations no astronomer would ever bother to confirm.",
+        "The bakery exhaled warmth and cinnamon onto the shivering morning street.",
+        "Her violin needed tuning, yet the wrong notes felt oddly like the truth.",
+        "The committee admired the proposal, then buried it beneath polite amendments.",
+        "Tide pools brimmed with small, ferocious dramas no one stooped to witness.",
+        "He kept the broken compass because losing it felt worse than being lost.",
+        "The translation was faithful to the words and deaf to all their music.",
+        "A draft slipped under the door and set every candle conspiring at once.",
+        "She filed the complaint, then spent the afternoon regretting its sharper lines.",
+        "The mountain looked closer in the morning, as if it had crept toward us overnight.",
+        "His umbrella surrendered to the wind with a theatrical, ribbed collapse.",
+        "We argued about the ending until the film no longer seemed worth defending.",
+        "The library smelled of patience, dust, and a thousand abandoned intentions.",
+        "Fireflies blinked their slow questions across the darkening meadow.",
+        "The waiter recommended the fish with the gravity of a sworn confession.",
+    ];
+
+    const pickRandom = (list) =>
+        list[Math.floor(list.length * Math.random())];
+
+    // Keys that shouldn't trigger the wrong-letter sound when they don't match
+    // the target (modifiers, navigation, and our reset keys).
+    const IGNORED_KEYS = [
+        "Shift", "Control", "Alt", "Meta", "CapsLock", "Tab", "Escape",
+        "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+        "Home", "End", "PageUp", "PageDown", "Enter", "Dead"
+    ];
+
     const pickRandomWord = () => {
         const w_index = Math.round((WORDS.length - 1) * Math.random());
         return _.getIndex(WORDS, w_index);
@@ -123,17 +207,17 @@
         return CODE_SNIPPETS[index];
     }
 
-    const makeNewText = () => {
-        // Mix code snippets with dictionary words sprinkled throughout
+    // "code" mode: mix code snippets with dictionary words sprinkled throughout.
+    const makeCodeText = () => {
         const snippetCount = Math.floor(Math.random() * 3) + 2;
         const parts = [];
-        
+
         for (let i = 0; i < snippetCount; i++) {
             // 50% chance of code snippet, 50% chance of words
             if (Math.random() > 0.5) {
                 // Get a code snippet and replace some parts with dictionary words
                 let snippet = pickRandomSnippet();
-                
+
                 // Replace variable names, strings, or values with dictionary words
                 snippet = snippet
                     .replace(/key/g, pickRandomWord())
@@ -143,7 +227,7 @@
                     .replace(/str/g, pickRandomWord())
                     .replace(/x/g, pickRandomWord().slice(0, 3))
                     .replace(/'[^']*'/g, () => `'${pickRandomWord()}'`);
-                
+
                 parts.push(snippet);
             } else {
                 // Add 2-4 dictionary words
@@ -152,8 +236,94 @@
                 parts.push(words.join(" "));
             }
         }
-        
-        const text = parts.join(" ");
+
+        return parts.join(" ");
+    }
+
+    // "text" mode: one short sentence, occasionally two distinct ones, to keep
+    // the practice length close to "code" mode.
+    const makeNaturalText = () => {
+        const first = pickRandom(SENTENCES);
+
+        // ~30% of the time, follow with a second, different sentence.
+        if (Math.random() < 0.3) {
+            let second = pickRandom(SENTENCES);
+            while (second === first) {
+                second = pickRandom(SENTENCES);
+            }
+            return `${first} ${second}`;
+        }
+
+        return first;
+    }
+
+    // Short, low error tone generated on the fly so we don't ship an audio file.
+    let audioCtx = null;
+    const playErrorSound = () => {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            if (!audioCtx) audioCtx = new AudioContext();
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = "square";
+            osc.frequency.setValueAtTime(180, now);
+
+            // Quick blip with a soft fade so it isn't jarring.
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.15, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        } catch (e) {
+            // Audio is a nice-to-have; never let it break typing.
+        }
+    }
+
+    // Brief upward two-note chime played when a sentence is completed.
+    const playSuccessSound = () => {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            if (!audioCtx) audioCtx = new AudioContext();
+
+            const now = audioCtx.currentTime;
+            // Two quick ascending notes for a cheerful "done" feel.
+            const notes = [
+                {freq: 587.33, at: 0},     // D5
+                {freq: 880.0, at: 0.09}    // A5
+            ];
+
+            notes.forEach(({freq, at}) => {
+                const start = now + at;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, start);
+
+                gain.gain.setValueAtTime(0.0001, start);
+                gain.gain.exponentialRampToValueAtTime(0.2, start + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(start);
+                osc.stop(start + 0.18);
+            });
+        } catch (e) {
+            // Audio is a nice-to-have; never let it break typing.
+        }
+    }
+
+    const makeNewText = (mode = "code") => {
+        const text = mode === "text" ? makeNaturalText() : makeCodeText();
 
         const letters = _.map(text, (char, c_index) => ({
             char,
@@ -178,8 +348,9 @@
         data () {
             return {
                 version,
-                ...makeNewText(),
+                ...makeNewText('text'),
                 pressedChars: [],
+                contentMode: 'text', // 'code' = words + code symbols, 'text' = natural language
                 selectedKeyboard: 'moonlander', // Default to Moonlander
                 currentLayer: 0
             };
@@ -188,7 +359,7 @@
         methods: {
             resetText () {
                 this.set({
-                    ...makeNewText(),
+                    ...makeNewText(this.get().contentMode),
                     pressedChars: []
                 });
             },
@@ -205,6 +376,11 @@
 
             onKeyboardChange() {
                 // Reset text when switching keyboards
+                this.resetText();
+            },
+
+            onModeChange() {
+                // Regenerate practice text in the newly selected mode
                 this.resetText();
             },
 
@@ -239,6 +415,8 @@
                 }
 
                 if ((targetChar === "Enter") && (key === targetChar)) {
+                    // Sentence finished — reward with a success chime before reset.
+                    playSuccessSound();
                     this.resetText();
                     return;
                 }
@@ -267,6 +445,13 @@
                             return;
                         }
                     }
+                }
+
+                // Nothing matched — this was a wrong keystroke. Play a tone, but
+                // ignore modifier and navigation keys (e.g. pressing Shift before
+                // a capital letter shouldn't count as a mistake).
+                if (!_.isIn(IGNORED_KEYS, key)) {
+                    playErrorSound();
                 }
             },
 
