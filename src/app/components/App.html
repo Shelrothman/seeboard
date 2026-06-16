@@ -23,6 +23,11 @@
             </select>
         </label>
 
+        <label>
+            <input type="checkbox" bind:checked="showHands"/>
+            Show hands
+        </label>
+
         {#if selectedKeyboard === 'moonlander'}
         <label class="layer-selector">
             Layer:
@@ -47,12 +52,14 @@
         <KeyboardioKeyboard
             {targetChar}
             {pressedChars}
+            {showHands}
         />
         {:else}
         <MoonlanderKeyboard
             {targetChar}
             {pressedChars}
             {currentLayer}
+            {showHands}
             on:layerChange="handleLayerChange(event)"
         />
         {/if}
@@ -352,7 +359,8 @@
                 pressedChars: [],
                 contentMode: 'text', // 'code' = words + code symbols, 'text' = natural language
                 selectedKeyboard: 'moonlander', // Default to Moonlander
-                currentLayer: 0
+                currentLayer: 0,
+                showHands: true // Overlay finger-guide hands on the keyboard
             };
         },
 
